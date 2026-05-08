@@ -114,21 +114,102 @@ th{background:#2c7be5;color:#fff}
 <input id="modalProduk" type="number" placeholder="Modal">
 <input id="hargaProduk" type="number" placeholder="Harga Jual">
 <input id="stokProduk" type="number" placeholder="Stok">
+
 <button onclick="tambahProduk()">Tambah Produk</button>
+
+<!-- 🔍 PENCARIAN -->
+<input 
+id="searchProduk" 
+placeholder="🔍 Cari produk..."
+onkeyup="loadProduk()">
 
 <div class="table-wrap">
 <table>
 <thead>
 <tr>
-<th>Nama</th><th>Modal</th><th>Harga</th><th>Stok</th><th>Total</th><th>Aksi</th>
+<th>Nama</th>
+<th>Modal</th>
+<th>Harga</th>
+<th>Stok</th>
+<th>Total</th>
+<th>Aksi</th>
 </tr>
 </thead>
+
 <tbody id="tabelProduk"></tbody>
+
 </table>
 </div>
 
 <p><b>Total Nilai Stok: Rp <span id="totalNilaiStok">0</span></b></p>
 </div>
+
+<script>
+function loadProduk(){
+
+    tabelProduk.innerHTML='';
+
+    let keyword = document
+        .getElementById('searchProduk')
+        ?.value
+        .toLowerCase() || '';
+
+    let total=0;
+
+    produk
+    .filter(p => 
+        p.nama.toLowerCase().includes(keyword)
+    )
+
+    .forEach((p,i)=>{
+
+        let totalHarga = p.stok * p.harga;
+        total += totalHarga;
+
+        let warna='';
+
+        if(p.stok <= BATAS_STOK && p.stok > 0)
+            warna='style="background:#ffe0ea"';
+
+        if(p.stok === 0)
+            warna='style="background:#ffd6d6"';
+
+        tabelProduk.innerHTML += `
+        <tr ${warna}>
+
+        <td>${p.nama}</td>
+
+        <td>
+        Rp ${p.modal.toLocaleString()}
+        </td>
+
+        <td>
+        Rp ${p.harga.toLocaleString()}
+        </td>
+
+        <td>${p.stok}</td>
+
+        <td>
+        Rp ${totalHarga.toLocaleString()}
+        </td>
+
+        <td>
+            <button onclick="editStok(${i})">
+            Edit
+            </button>
+
+            <button onclick="hapusProduk(${i})">
+            Hapus
+            </button>
+        </td>
+
+        </tr>`;
+    });
+
+    totalNilaiStok.innerText = total.toLocaleString();
+}
+</script>
+
 
 <!-- TRANSAKSI -->
 <div id="transaksi" class="section">
@@ -200,30 +281,52 @@ function tambahProduk(){
 }
 
 function loadProduk(){
+
     tabelProduk.innerHTML='';
-    let total=0;
+
+    let keyword = '';
+
+    let cari = document.getElementById('searchProduk');
+
+    if(cari){
+        keyword = cari.value.toLowerCase();
+    }
+
+    let total = 0;
+
     produk.forEach((p,i)=>{
-        let totalHarga=p.stok*p.harga;
-        total+=totalHarga;
+
+        // 🔍 FILTER PENCARIAN
+        if(!p.nama.toLowerCase().includes(keyword)){
+            return;
+        }
+
+        let totalHarga = p.stok * p.harga;
+        total += totalHarga;
 
         let warna='';
-        if(p.stok<=BATAS_STOK && p.stok>0) warna='style="background:#ffe0ea"';
-        if(p.stok===0) warna='style="background:#ffd6d6"';
 
-        tabelProduk.innerHTML+=`
+        if(p.stok <= BATAS_STOK && p.stok > 0)
+            warna='style="background:#ffe0ea"';
+
+        if(p.stok === 0)
+            warna='style="background:#ffd6d6"';
+
+        tabelProduk.innerHTML += `
         <tr ${warna}>
-        <td>${p.nama}</td>
-        <td>Rp ${p.modal.toLocaleString()}</td>
-        <td>Rp ${p.harga.toLocaleString()}</td>
-        <td>${p.stok}</td>
-        <td>Rp ${totalHarga.toLocaleString()}</td>
-        <td>
-            <button onclick="editStok(${i})">Edit</button>
-            <button onclick="hapusProduk(${i})">Hapus</button>
-        </td>
+            <td>${p.nama}</td>
+            <td>Rp ${p.modal.toLocaleString()}</td>
+            <td>Rp ${p.harga.toLocaleString()}</td>
+            <td>${p.stok}</td>
+            <td>Rp ${totalHarga.toLocaleString()}</td>
+            <td>
+                <button onclick="editStok(${i})">Edit</button>
+                <button onclick="hapusProduk(${i})">Hapus</button>
+            </td>
         </tr>`;
     });
-    totalNilaiStok.innerText=total.toLocaleString();
+
+    totalNilaiStok.innerText = total.toLocaleString();
 }
 
 function editStok(i){
