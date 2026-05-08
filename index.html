@@ -329,20 +329,39 @@ function loadProduk(){
     totalNilaiStok.innerText = total.toLocaleString();
 }
 
-function editStok(i){
-    let n=prompt('Stok baru',produk[i].stok);
-    if(n!==null){
-        produk[i].stok=+n;
-        localStorage.setItem('produk',JSON.stringify(produk));
-        loadProduk();cekStok();
-    }
-}
+
 function hapusProduk(i){
     if(confirm('Hapus produk?')){
         produk.splice(i,1);
         localStorage.setItem('produk',JSON.stringify(produk));
         loadProduk();cekStok();
     }
+}function editStok(i){
+
+    let nama = prompt('Nama produk', produk[i].nama);
+    if(nama===null) return;
+
+    let modal = prompt('Modal produk', produk[i].modal);
+    if(modal===null) return;
+
+    let harga = prompt('Harga jual', produk[i].harga);
+    if(harga===null) return;
+
+    let stok = prompt('Stok produk', produk[i].stok);
+    if(stok===null) return;
+
+    produk[i] = {
+        nama:nama,
+        modal:+modal,
+        harga:+harga,
+        stok:+stok
+    };
+
+    localStorage.setItem('produk', JSON.stringify(produk));
+
+    loadProduk();
+    loadSelect();
+    cekStok();
 }
 function loadSelect(){
     listProduk.innerHTML='';
