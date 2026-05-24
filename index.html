@@ -24,7 +24,7 @@ button{
     color:#fff;font-weight:600;cursor:pointer;
 }
 .nav{
-    display:grid;grid-template-columns:repeat(4,1fr);
+    display:grid;grid-template-columns:repeat(5,1fr);
     gap:6px;margin-bottom:10px;
 }
 input{
@@ -94,6 +94,7 @@ th{background:#2c7be5;color:#fff}
     <button onclick="show('produk')">Produk</button>
     <button onclick="show('transaksi')">Transaksi</button>
     <button onclick="show('laporan')">Laporan</button>
+    <button onclick="show('utang')">Utang</button>
     <button onclick="toggleDark()">🌙</button>
 </div>
 
@@ -105,6 +106,7 @@ th{background:#2c7be5;color:#fff}
     <h4>💗 Stok Menipis</h4>
     <div id="popupList"></div>
 </div>
+
 
 <!-- PRODUK -->
 <div id="produk" class="section active">
@@ -230,29 +232,117 @@ function loadProduk(){
 </div>
 
 <p><b>Total: Rp <span id="totalBelanja">0</span></b></p>
+<input id="namaPelanggan" placeholder="Nama Pelanggan">
+
 <input id="cash" type="number" placeholder="Cash">
-<button onclick="simpanTransaksi()">Simpan & Cetak</button>
+
+<button onclick="simpanTransaksi()">
+💵 Bayar Cash
+</button>
+
+<button onclick="transaksiUtang()">
+📒 Masuk Utang
+</button>
+
 </div>
 
 <!-- LAPORAN -->
 <div id="laporan" class="section">
-<h3>Laporan Bulanan</h3>
+
+<h3>📊 Laporan Bulanan</h3>
+
 <input type="month" id="tanggalLaporan">
-<button onclick="buatLaporan()">Tampilkan</button>
+
+<button onclick="buatLaporan()">
+Tampilkan
+</button>
 
 <div class="table-wrap">
+
 <table>
+
 <thead>
-<tr><th>No</th><th>Tanggal</th><th>Produk</th><th>Qty</th><th>Subtotal</th></tr>
+<tr>
+<th>No</th>
+<th>Tanggal</th>
+<th>Produk</th>
+<th>Qty</th>
+<th>Subtotal</th>
+</tr>
 </thead>
+
 <tbody id="tabelLaporan"></tbody>
+
 </table>
+
 </div>
 
 <div id="hasilLaporan"></div>
 
-<button onclick="backupData()">💾 Backup</button>
-<input type="file" accept=".json" onchange="restoreData(event)">
+<button onclick="cetakLaporan()">
+🖨 Cetak Laporan
+</button>
+
+<button onclick="backupData()">
+💾 Backup
+</button>
+
+<input
+type="file"
+accept=".json"
+onchange="restoreData(event)">
+
+</div>
+
+
+<!-- UTANG -->
+<div id="utang" class="section">
+
+<h3>📒 Daftar Utang</h3>
+
+<input
+id="namaUtang"
+placeholder="Nama Pelanggan">
+
+<select id="produkUtang">
+
+<option value="">
+Pilih Produk
+</option>
+
+</select>
+
+<input
+id="qtyUtang"
+type="number"
+placeholder="Jumlah">
+
+<button onclick="tambahUtang()">
+Tambah Utang
+</button>
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+
+<tr>
+<th>Nama</th>
+<th>Barang</th>
+<th>Total Utang</th>
+<th>Bayar</th>
+<th>Sisa</th>
+<th>Status</th>
+<th>Aksi</th>
+</tr>
+
+</thead>
+
+<tbody id="tabelUtang"></tbody>
+
+</table>
+
 </div>
 
 <script>
@@ -270,14 +360,31 @@ function toggleDark(){document.body.classList.toggle('dark');}
 
 /* PRODUK */
 function tambahProduk(){
+
     produk.push({
         nama:namaProduk.value,
         modal:+modalProduk.value,
         harga:+hargaProduk.value,
         stok:+stokProduk.value
     });
-    localStorage.setItem('produk',JSON.stringify(produk));
-    loadProduk();loadSelect();cekStok();
+
+    localStorage.setItem(
+        'produk',
+        JSON.stringify(produk)
+    );
+
+    loadProduk();
+
+    loadSelect();
+
+    loadProdukUtang(); // 🔥 TAMBAHAN INI
+
+    cekStok();
+
+    namaProduk.value='';
+    modalProduk.value='';
+    hargaProduk.value='';
+    stokProduk.value='';
 }
 
 function loadProduk(){
@@ -415,6 +522,83 @@ function simpanTransaksi(){
     cash.value = '';
 }
 
+function transaksiUtang(){
+
+    let nama = namaPelanggan.value.trim();
+
+    if(nama == ''){
+        return alert('Masukkan nama pelanggan');
+    }
+
+    if(cart.length == 0){
+        return alert('Keranjang kosong');
+    }
+
+    let total = cart.reduce(
+        (a,b)=> a + b.subtotal,
+        0
+    );
+
+    // cari pelanggan lama
+    let pelanggan = utang.find(
+        u => u.nama.toLowerCase()
+        === nama.toLowerCase()
+    );
+
+    // format barang
+    let daftarBarang = cart.map(
+        c => `${c.nama} (${c.qty})`
+    );
+
+    // kalau pelanggan sudah ada
+    if(pelanggan){
+
+        pelanggan.total += total;
+
+        pelanggan.sisa += total;
+
+        pelanggan.barang.push(
+            ...daftarBarang
+        );
+
+    }
+
+    // pelanggan baru
+    else{
+
+        utang.push({
+
+            nama:nama,
+
+            barang:daftarBarang,
+
+            total:total,
+
+            dibayar:0,
+
+            sisa:total,
+
+            riwayat:[]
+        });
+    }
+
+    // simpan
+    localStorage.setItem(
+        'utang',
+        JSON.stringify(utang)
+    );
+
+    // reset keranjang
+    cart = [];
+
+    renderCart();
+
+    renderUtang();
+
+    namaPelanggan.value='';
+
+    alert('Berhasil masuk daftar utang');
+}
 
         
           /* STRUK */
@@ -480,6 +664,89 @@ function buatLaporan(){
     `;
 }
 
+function cetakLaporan(){
+
+    let bulan = tanggalLaporan.value;
+
+    if(!bulan){
+        return alert('Pilih bulan dulu');
+    }
+
+    let isi = `
+    <center>
+        <h2>🏠 WARUNG LIA 🏠</h2>
+        <p>Laporan Bulanan</p>
+        <p>Bulan: ${bulan}</p>
+    </center>
+
+    <hr>
+
+    <table width="100%" border="1" cellspacing="0" cellpadding="5">
+
+    <tr>
+        <th>No</th>
+        <th>Tanggal</th>
+        <th>Produk</th>
+        <th>Qty</th>
+        <th>Subtotal</th>
+    </tr>
+    `;
+
+    let no = 1;
+    let total = 0;
+    let laba = 0;
+
+    transaksi.forEach(t=>{
+
+        if(t.tanggal.startsWith(bulan)){
+
+            total += t.total;
+            laba += t.laba;
+
+            t.items.forEach(i=>{
+
+                isi += `
+                <tr>
+                    <td>${no++}</td>
+                    <td>${t.tanggal}</td>
+                    <td>${i.nama}</td>
+                    <td>${i.qty}</td>
+                    <td>Rp ${i.subtotal.toLocaleString()}</td>
+                </tr>
+                `;
+            });
+        }
+    });
+
+    isi += `
+    </table>
+
+    <br>
+
+    <h3>
+    Total Penjualan :
+    Rp ${total.toLocaleString()}
+    </h3>
+
+    <h3>
+    Total Laba :
+    Rp ${laba.toLocaleString()}
+    </h3>
+
+    <br><br>
+
+    <center>
+    Terima Kasih 🙏
+    </center>
+    `;
+
+    let w = window.open('', '', 'width=900');
+
+    w.document.write(isi);
+
+    w.print();
+}
+
 
 /* BACKUP */
 function backupData(){
@@ -502,15 +769,546 @@ function restoreData(e){
 
 /* 🔔 NOTIF */
 function cekStok(){
-    let p=produk.filter(x=>x.stok>0&&x.stok<=BATAS_STOK);
-    bellCount.innerText=p.length;
-    popupList.innerHTML=p.map(x=>`• ${x.nama} (sisa ${x.stok})`).join('<br>');
+
+    let stokMenipis = produk.filter(
+        p => p.stok <= BATAS_STOK
+    );
+
+    bellCount.innerText =
+    stokMenipis.length;
+
+    if(stokMenipis.length > 0){
+
+        popupList.innerHTML =
+        stokMenipis.map(p => `
+
+        <p>
+        • ${p.nama}
+        (stok: ${p.stok})
+        </p>
+
+        `).join('');
+
+    }else{
+
+        popupList.innerHTML =
+        '<p>Tidak ada stok menipis</p>';
+    }
 }
+
 function togglePopup(){
     popup.classList.toggle('show');
 }
 
 loadProduk();loadSelect();cekStok();
+
+/* =========================
+   FITUR UTANG
+========================= */
+
+let utang = JSON.parse(
+localStorage.getItem('utang')
+) || [];
+
+function loadProdukUtang(){
+
+    produkUtang.innerHTML =
+    '<option value="">Pilih Produk</option>';
+
+    produk.forEach((p,i)=>{
+
+        produkUtang.innerHTML += `
+        <option value="${i}">
+        ${p.nama} - Rp ${p.harga.toLocaleString()}
+        </option>`;
+    });
+}
+
+function renderUtang(){
+
+    tabelUtang.innerHTML='';
+
+    utang.forEach((u,i)=>{
+
+        let status =
+        u.sisa <= 0
+        ? 'Lunas'
+        : 'Belum Lunas';
+
+        let dibayar =
+        u.dibayar || 0;
+
+        tabelUtang.innerHTML += `
+        <tr>
+
+        <td>${u.nama}</td>
+
+        <td>
+        ${u.barang.join('<br>')}
+        </td>
+
+        <td>
+        Rp ${u.total.toLocaleString()}
+        </td>
+
+        <td>
+
+        Sudah Bayar:
+        Rp ${dibayar.toLocaleString()}
+        <br><br>
+
+        <input
+        type="number"
+        id="bayar${i}"
+        placeholder="Bayar">
+
+        <button
+        onclick="bayarUtang(${i})">
+        Bayar
+        </button>
+
+        </td>
+
+        <td>
+        Rp ${u.sisa.toLocaleString()}
+        </td>
+
+       <td style="
+color:
+${u.sisa<=0?'green':'orange'};
+font-weight:bold;
+">
+${status}
+
+<br><br>
+
+<button onclick="cetakUtang(${i})">
+🖨 Cetak
+</button>
+
+<br><br>
+
+<button onclick="hapusUtang(${i})">
+Hapus
+</button>
+
+</td>
+
+        </tr>`;
+    });
+}
+
+function tambahUtang(){
+
+    let nama = namaUtang.value.trim();
+
+    let index = produkUtang.value;
+
+    let qty = Number(qtyUtang.value);
+
+    if(
+        nama == '' ||
+        index == '' ||
+        qty <= 0
+    ){
+        return alert('Lengkapi data');
+    }
+
+    let p = produk[index];
+
+    if(!p){
+        return alert('Produk tidak ditemukan');
+    }
+
+    if(qty > p.stok){
+        return alert('Stok tidak cukup');
+    }
+
+    // kurangi stok
+    p.stok -= qty;
+
+    let total = qty * p.harga;
+
+    // cari pelanggan lama
+    let pelanggan = utang.find(
+        u => u.nama.toLowerCase() === nama.toLowerCase()
+    );
+
+    // JIKA SUDAH ADA
+    if(pelanggan){
+
+        pelanggan.total += total;
+
+        pelanggan.sisa += total;
+
+        pelanggan.barang.push(
+            `${p.nama} (${qty})`
+        );
+
+    }
+
+    // JIKA BELUM ADA
+    else{
+
+        utang.push({
+
+            nama:nama,
+
+            barang:[
+                `${p.nama} (${qty})`
+            ],
+
+            total:total,
+
+            dibayar:0,
+
+            sisa:total
+        });
+    }
+
+    // simpan
+    localStorage.setItem(
+        'utang',
+        JSON.stringify(utang)
+    );
+
+    localStorage.setItem(
+        'produk',
+        JSON.stringify(produk)
+    );
+
+    // refresh
+    renderUtang();
+
+    loadProduk();
+
+    cekStok();
+
+    // reset input
+    namaUtang.value='';
+
+    qtyUtang.value='';
+
+    produkUtang.value='';
+}
+
+
+ function bayarUtang(i){
+
+    let bayar = parseInt(
+        document.getElementById('bayar'+i).value
+    );
+
+    if(isNaN(bayar) || bayar <= 0){
+        return alert('Masukkan nominal');
+    }
+
+    // kalau belum ada dibayar
+    if(!utang[i].dibayar){
+        utang[i].dibayar = 0;
+    }
+
+    // HITUNG SISA REAL
+    let sisaSekarang =
+        utang[i].total - utang[i].dibayar;
+
+    // CEK MELEBIHI
+    if(bayar > sisaSekarang){
+        return alert(
+            'Pembayaran melebihi sisa utang'
+        );
+    }
+
+    // TAMBAH PEMBAYARAN
+    utang[i].dibayar += bayar;
+
+    // UPDATE SISA
+    utang[i].sisa =
+        utang[i].total - utang[i].dibayar;
+
+    // RIWAYAT
+    if(!utang[i].riwayat){
+        utang[i].riwayat = [];
+    }
+
+    utang[i].riwayat.push({
+
+        tanggal:
+        new Date()
+        .toLocaleString('id-ID'),
+
+        bayar: bayar,
+
+        sisa: utang[i].sisa
+    });
+
+    // SIMPAN
+    localStorage.setItem(
+        'utang',
+        JSON.stringify(utang)
+    );
+
+    // REFRESH
+    renderUtang();
+}
+
+function cetakUtang(i){
+
+    let u = utang[i];
+
+    let w = window.open(
+    '',
+    '',
+    'width=400'
+    );
+
+    let isi = `
+
+    <center>
+
+    <h2>
+    🏠 WARUNG LIA 🏠
+    </h2>
+
+    <p>
+    Danalaya No 20,
+    Banteran, Sumbang
+    </p>
+
+    <p>
+    Kab. Banyumas,
+    Jawa Tengah, 53183
+    </p>
+
+    <p>
+    Telp: 081542977099
+    </p>
+
+    </center>
+
+    <hr>
+
+    <center>
+
+    <h2>NOTA UTANG</h2>
+
+    </center>
+
+    <p>
+    Tanggal :
+    ${new Date()
+    .toLocaleString('id-ID')}
+    </p>
+
+    <p>
+    Pelanggan :
+    ${u.nama}
+    </p>
+
+    <p>
+    Kasir : Lia
+    </p>
+
+    <hr>
+
+    <h3>
+    DAFTAR BARANG
+    </h3>
+
+    <table width="100%" border="0">
+
+    <tr>
+    <th>No</th>
+    <th>Barang</th>
+    <th>Qty</th>
+    <th>Harga</th>
+    <th>Total</th>
+    </tr>
+
+    ${
+    u.barang.map((b,index)=>{
+
+        let namaBarang = b;
+        let qty = 1;
+
+        if(b.includes('(')){
+
+            qty = parseInt(
+                b.split('(')[1]
+                .replace(')','')
+            );
+
+            namaBarang =
+            b.split('(')[0].trim();
+        }
+
+        let dataProduk =
+        produk.find(
+            p => p.nama === namaBarang
+        );
+
+        let harga =
+        dataProduk
+        ? dataProduk.harga
+        : 0;
+
+        let subtotal =
+        harga * qty;
+
+        return `
+
+        <tr>
+
+        <td>${index+1}</td>
+
+        <td>${namaBarang}</td>
+
+        <td>${qty}</td>
+
+        <td>
+        Rp ${harga.toLocaleString()}
+        </td>
+
+        <td>
+        Rp ${subtotal.toLocaleString()}
+        </td>
+
+        </tr>
+        `;
+    }).join('')
+    }
+
+    </table>
+
+    <hr>
+
+    <h3>
+    RIWAYAT PEMBAYARAN
+    </h3>
+
+    <table width="100%">
+
+    <tr>
+    <th>No</th>
+    <th>Tanggal</th>
+    <th>Bayar</th>
+    <th>Sisa</th>
+    </tr>
+
+    ${
+    u.riwayat && u.riwayat.length > 0
+
+    ?
+
+    u.riwayat.map(
+    (r,index)=>`
+
+    <tr>
+
+    <td>
+    ${index+1}
+    </td>
+
+    <td>
+    ${r.tanggal}
+    </td>
+
+    <td>
+    Rp ${r.bayar.toLocaleString()}
+    </td>
+
+    <td>
+    Rp ${r.sisa.toLocaleString()}
+    </td>
+
+    </tr>
+
+    `
+    ).join('')
+
+    :
+
+    `
+    <tr>
+    <td colspan="4">
+    Belum ada pembayaran
+    </td>
+    </tr>
+    `
+    }
+
+    </table>
+
+    <hr>
+
+    <h3>
+    TOTAL UTANG :
+    Rp ${u.total.toLocaleString()}
+    </h3>
+
+    <h3>
+    TOTAL SUDAH DIBAYAR :
+    Rp ${(u.dibayar || 0)
+    .toLocaleString()}
+    </h3>
+
+    <h2 style="
+    color:
+    ${u.sisa<=0?'green':'red'}
+    ">
+
+    SISA UTANG :
+    Rp ${u.sisa.toLocaleString()}
+
+    </h2>
+
+    <h2 style="
+    color:
+    ${u.sisa<=0?'green':'red'}
+    ">
+
+    STATUS :
+    ${u.sisa<=0
+    ?'LUNAS'
+    :'BELUM LUNAS'}
+
+    </h2>
+
+    <hr>
+
+    <center>
+    Terima Kasih 🙏
+    </center>
+    `;
+
+    w.document.write(isi);
+
+    w.print();
+}
+
+function hapusUtang(i){
+
+    if(confirm('Hapus data utang ini?')){
+
+        utang.splice(i,1);
+
+        localStorage.setItem(
+            'utang',
+            JSON.stringify(utang)
+        );
+
+        renderUtang();
+    }
+}
+
+loadProduk();
+loadSelect();
+loadProdukUtang();
+renderUtang();
+cekStok();
+
+
+
 </script>
 
 </body>
